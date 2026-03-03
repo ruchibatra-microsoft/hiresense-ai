@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: hiresense-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: hiresense
+
+  server:
+    build: ./server
+    container_name: hiresense-server
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongodb
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017/hiresense
+      PORT: 5000
+      JWT_SECRET: ${JWT_SECRET}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      CLIENT_URL: http://localhost:3000
+    volumes:
+      - ./server/src:/app/src
+
+  client:
+    build: ./client
+    container_name: hiresense-client
+    ports:
+      - "3000:3000"
+    depends_on:
+      - server
+    environment:
+      REACT_APP_API_URL: http://localhost:5000/api
+
+volumes:
+  mongo_data:
