@@ -1,23 +1,68 @@
 /**
  * HireSense AI — LLM Service
  * 
- * Handles all communication with the LLM (OpenAI GPT-4).
- * Falls back to mock mode if no API key is configured.
+ * Supports multiple LLM providers:
+ *   1. GitHub Models (free! uses your GitHub token)
+ *   2. Azure OpenAI (Microsoft internal)
+ *   3. OpenAI direct API
+ *   4. Mock mode (no API key)
  */
 
 const OpenAI = require('openai');
 
 class LLMService {
   constructor() {
-    this.mockMode = !process.env.OPENAI_API_KEY;
-    if (!this.mockMode) {
-      this.client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-      console.log('🤖 LLM Service: Using OpenAI GPT-4');
-    } else {
-      this.client = null;
-      console.log('🧪 LLM Service: Running in MOCK mode (no OPENAI_API_KEY set)');
+    this.mockMode = true;
+    this.client = null;
+    this.provider = 'mock';
+
+    // Priority 1: GitHub Models (free for GitHub users)
+    if (process.env.GITHUB_TOKEN || process.env.GH_TOKEN) {
+      const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+      this.client = new OpenAI({
+        baseURL: 'https://models.inference.ai.azure.com',
+        apiKey: token
+      });
+      this.mockMode = false;
+      this.provider = 'github-models';
+      this.model = process.env.LLM_MODEL || 'gpt-4o';
+      console.log('🤖 LLM Service: Using GitHub Models (free)');
+      console.log(`   Model: ${this.model}`);
     }
-    this.model = process.env.LLM_MODEL || 'gpt-4';
+    // Priority 2: Azure OpenAI
+    else if (process.env.AZURE_OPENAI_ENDPOINT && process.env.AZURE_OPENAI_KEY) {
+      this.client = new OpenAI({
+        apiKey: process.env.AZURE_OPENAI_KEY,
+        baseURL: `${process.env.AZURE_OPENAI_ENDPOINT}/openai/deployments/${process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o'}`,
+        defaultQuery: { 'api-version': process.env.AZURE_OPENAI_API_VERSION || '2024-08-01-preview' },
+        defaultHeaders: { 'api-key': process.env.AZURE_OPENAI_KEY }
+      });
+      this.mockMode = false;
+      this.provider = 'azure-openai';
+      this.model = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o';
+      console.log('🤖 LLM Service: Using Azure OpenAI');
+      console.log(`   Endpoint: ${process.env.AZURE_OPENAI_ENDPOINT}`);
+      console.log(`   Deployment: ${this.model}`);
+    }
+    // Priority 3: OpenAI direct
+    else if (process.env.OPENAI_API_KEY) {
+      this.client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      this.mockMode = false;
+      this.provider = 'openai';
+      this.model = process.env.LLM_MODEL || 'gpt-4';
+      console.log('🤖 LLM Service: Using OpenAI');
+      console.log(`   Model: ${this.model}`);
+    }
+    // Priority 4: Mock mode
+    else {
+      console.log('🧪 LLM Service: Running in MOCK mode');
+      console.log('   To use real AI, set one of:');
+      console.log('   • GITHUB_TOKEN (easiest — free via GitHub Models)');
+      console.log('   • AZURE_OPENAI_ENDPOINT + AZURE_OPENAI_KEY');
+      console.log('   • OPENAI_API_KEY');
+      this.model = 'mock';
+    }
+
     this.maxTokens = 1500;
     this.temperature = 0.7;
   }
