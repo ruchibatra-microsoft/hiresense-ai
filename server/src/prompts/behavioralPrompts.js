@@ -3,12 +3,16 @@
  */
 
 const { getCompanyContext } = require('./companyContext');
+const { buildQuestionIntelligencePrompt } = require('./questionContext');
 
 function buildBehavioralSystemPrompt(company, question) {
   const ctx = getCompanyContext(company);
   if (!ctx) throw new Error(`Unknown company: ${company}`);
 
+  const questionIntel = buildQuestionIntelligencePrompt(company, 'behavioral');
+
   return `You are ${ctx.persona.name}, ${ctx.persona.title}. You are conducting a Behavioral interview.
+${questionIntel}
 
 ═══ YOUR PERSONA ═══
 ${ctx.persona.style}

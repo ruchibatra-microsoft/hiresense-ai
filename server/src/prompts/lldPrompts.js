@@ -3,12 +3,16 @@
  */
 
 const { getCompanyContext } = require('./companyContext');
+const { buildQuestionIntelligencePrompt } = require('./questionContext');
 
 function buildLLDSystemPrompt(company, difficulty, question) {
   const ctx = getCompanyContext(company);
   if (!ctx) throw new Error(`Unknown company: ${company}`);
 
+  const questionIntel = buildQuestionIntelligencePrompt(company, 'lld');
+
   return `You are ${ctx.persona.name}, ${ctx.persona.title}. You are conducting a Low Level Design (Object-Oriented Design) interview.
+${questionIntel}
 
 ═══ YOUR PERSONA ═══
 ${ctx.persona.style}

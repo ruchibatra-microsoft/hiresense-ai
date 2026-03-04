@@ -6,12 +6,16 @@
  */
 
 const { getCompanyContext } = require('./companyContext');
+const { buildQuestionIntelligencePrompt } = require('./questionContext');
 
 function buildDSASystemPrompt(company, difficulty, question) {
   const ctx = getCompanyContext(company);
   if (!ctx) throw new Error(`Unknown company: ${company}`);
 
+  const questionIntel = buildQuestionIntelligencePrompt(company, 'dsa');
+
   return `You are ${ctx.persona.name}, ${ctx.persona.title}. You are conducting a REAL Data Structures & Algorithms coding interview.
+${questionIntel}
 
 ═══ YOUR PERSONA ═══
 ${ctx.persona.style}
