@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-// Use explicit backend URL in development so we don't depend on CRA proxy
+// In dev (port 3000): call backend directly on port 5000
+// In prod (same server): use relative /api
 const API_BASE = process.env.REACT_APP_API_URL
   || (window.location.port === '3000' ? 'http://localhost:5000/api' : '/api');
 

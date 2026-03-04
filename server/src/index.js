@@ -16,11 +16,15 @@ const dashboardRoutes = require('./routes/dashboard');
 const questionRoutes = require('./routes/questions');
 
 const app = express();
+const isProd = process.env.NODE_ENV === 'production';
 
 // Middleware
-app.use(helmet());
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:3000', credentials: true }));
-app.use(morgan('dev'));
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(cors({
+  origin: isProd ? true : (process.env.CLIENT_URL || 'http://localhost:3000'),
+  credentials: true
+}));
+app.use(morgan(isProd ? 'combined' : 'dev'));
 app.use(express.json({ limit: '10mb' }));
 
 // Routes
@@ -31,8 +35,17 @@ app.use('/api/questions', questionRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), mode: isProd ? 'production' : 'development' });
 });
+
+// Production: serve React build as static files
+if (isProd) {
+  const clientBuild = path.join(__dirname, '../../client/build');
+  app.use(express.static(clientBuild));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientBuild, 'index.html'));
+  });
+}
 
 // Error handler
 app.use((err, req, res, next) => {
