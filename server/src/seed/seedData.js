@@ -9,6 +9,7 @@
 require('dotenv').config({ path: require('path').join(__dirname, '../../../.env') });
 const mongoose = require('mongoose');
 const Question = require('../models/Question');
+const comprehensiveQuestions = require('./comprehensiveQuestions');
 
 const seedQuestions = [
   // ═══ GOOGLE DSA ═══
@@ -316,7 +317,10 @@ async function seed() {
     }
 
     let added = 0;
-    for (const q of seedQuestions) {
+    const allQuestions = [...seedQuestions, ...comprehensiveQuestions];
+    console.log(`📚 Total questions to seed: ${allQuestions.length}`);
+    
+    for (const q of allQuestions) {
       const exists = await Question.findOne({ title: q.title, company: q.company, roundType: q.roundType });
       if (!exists) {
         await Question.create(q);
@@ -327,7 +331,7 @@ async function seed() {
       }
     }
 
-    console.log(`\n🎉 Seeding complete! Added ${added} questions (${seedQuestions.length - added} skipped).`);
+    console.log(`\n🎉 Seeding complete! Added ${added} questions (${allQuestions.length - added} skipped).`);
     console.log(`📊 Total questions in DB: ${await Question.countDocuments()}`);
   } catch (error) {
     console.error('❌ Seeding failed:', error.message);

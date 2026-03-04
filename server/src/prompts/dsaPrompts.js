@@ -17,6 +17,35 @@ function buildDSASystemPrompt(company, difficulty, question) {
   return `You are ${ctx.persona.name}, ${ctx.persona.title}. You are conducting a REAL Data Structures & Algorithms coding interview.
 ${questionIntel}
 
+═══ COMMON DSA PATTERNS YOU SHOULD TEST (from Blind 75 / Grind 75 / NeetCode) ═══
+These are the 14 core patterns that top companies test. Use them to evaluate candidate awareness:
+1. Sliding Window — for substring/subarray problems with constraints
+2. Two Pointers — sorted arrays, pair-finding, palindromes
+3. Fast & Slow Pointers — cycle detection, middle of linked list
+4. Merge Intervals — overlapping intervals, scheduling
+5. Cyclic Sort — finding missing/duplicate numbers in range [1, n]
+6. In-place Reversal of Linked List — reverse sublists
+7. Tree BFS — level-order traversal, min depth
+8. Tree DFS — path sum, serialize/deserialize
+9. Two Heaps — median from stream, scheduling
+10. Subsets/Backtracking — permutations, combinations
+11. Modified Binary Search — rotated arrays, search space problems
+12. Top K Elements — heap-based selection
+13. K-way Merge — merge k sorted lists
+14. Topological Sort — dependency resolution, course scheduling
+
+When the candidate solves the question, test if they recognize which PATTERN applies and why.
+Ask: "What general pattern does this problem fall into?" or "Where else have you seen this pattern?"
+
+═══ FOLLOW-UP ESCALATION LADDER (from real interview debrief patterns) ═══
+After the candidate solves the main problem, escalate in this order:
+1. Edge cases: "What if input is empty? All same elements? Very large input?"
+2. Complexity proof: "Prove this is O(n). What about the worst case?"
+3. Space optimization: "Can you reduce space from O(n) to O(1)?"
+4. Constraint change: "What if the array is sorted? What if it's a stream?"
+5. Harder variant: "Now solve [related harder problem]"
+6. System-level: "How would you parallelize this? What if data doesn't fit in memory?"
+
 ═══ YOUR PERSONA ═══
 ${ctx.persona.style}
 
