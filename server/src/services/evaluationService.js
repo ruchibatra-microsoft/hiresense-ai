@@ -36,13 +36,8 @@ class EvaluationService {
     // Ensure score is within range
     const score = Math.max(0, Math.min(100, evaluation.overallScore || 50));
 
-    // Determine decision based on score if not provided
-    let decision = evaluation.decision;
-    if (!decision) {
-      if (score >= 76) decision = 'hire';
-      else if (score >= 66) decision = 'lean-hire';
-      else decision = 'no-hire';
-    }
+    // Normalize decision to valid enum values: hire, lean-hire, no-hire
+    let decision = this.normalizeDecision(evaluation.decision, score);
 
     return {
       overallScore: score,
@@ -67,6 +62,30 @@ class EvaluationService {
   ensureArray(arr, defaultMsg) {
     if (Array.isArray(arr) && arr.length > 0) return arr;
     return defaultMsg ? [defaultMsg] : [];
+  }
+
+  /**
+   * Normalize any LLM decision string to valid enum: hire | lean-hire | no-hire
+   */
+  normalizeDecision(raw, score) {
+    if (!raw) {
+      // Fall back to score-based decision
+      if (score >= 76) return 'hire';
+      if (score >= 60) return 'lean-hire';
+      return 'no-hire';
+    }
+
+    const d = raw.toLowerCase().replace(/[_\s]+/g, '-').trim();
+
+    // Map all possible LLM outputs to valid values
+    if (d.includes('strong-hire') || d === 'hire' || d === 'yes') return 'hire';
+    if (d.includes('lean-hire') || d.includes('weak-hire') || d === 'maybe') return 'lean-hire';
+    if (d.includes('no-hire') || d.includes('lean-no') || d.includes('strong-no') || d === 'no' || d === 'reject') return 'no-hire';
+
+    // If still unrecognized, use score
+    if (score >= 76) return 'hire';
+    if (score >= 60) return 'lean-hire';
+    return 'no-hire';
   }
 
   /**

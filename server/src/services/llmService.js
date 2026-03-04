@@ -127,26 +127,39 @@ class LLMService {
     }
 
     try {
-      const response = await this.client.chat.completions.create({
+      const requestParams = {
         model: options.model || this.model,
         messages: [
           { role: 'system', content: 'You are a strict technical interview evaluator. Respond ONLY with valid JSON. No markdown, no code fences, no explanation outside the JSON.' },
           { role: 'user', content: evaluationPrompt }
         ],
         max_tokens: options.maxTokens || 3000,
-        temperature: 0.3, // Lower temperature for consistent evaluation
-        response_format: { type: 'json_object' }
-      });
+        temperature: 0.3
+      };
+
+      // response_format may not be supported by all providers (e.g. some GitHub Models)
+      // Try with it first, fall back without
+      let response;
+      try {
+        response = await this.client.chat.completions.create({
+          ...requestParams,
+          response_format: { type: 'json_object' }
+        });
+      } catch (formatError) {
+        console.log('JSON mode not supported, retrying without response_format...');
+        response = await this.client.chat.completions.create(requestParams);
+      }
 
       const content = response.choices[0].message.content;
       try {
         return JSON.parse(content);
       } catch (parseError) {
-        // Try to extract JSON from response
+        // Try to extract JSON from response (LLM may wrap in markdown)
         const jsonMatch = content.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           return JSON.parse(jsonMatch[0]);
         }
+        console.error('Could not parse evaluation JSON:', content.substring(0, 200));
         throw new Error('Failed to parse evaluation response as JSON');
       }
     } catch (error) {
