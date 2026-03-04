@@ -1,4 +1,9 @@
-require('dotenv').config({ path: require('path').join(__dirname, '../../.env.example') });
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../../.env') });
+// Fallback to .env.example if .env doesn't set values
+if (!process.env.JWT_SECRET) {
+  require('dotenv').config({ path: path.join(__dirname, '../../.env.example') });
+}
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -11,9 +16,6 @@ const dashboardRoutes = require('./routes/dashboard');
 const questionRoutes = require('./routes/questions');
 
 const app = express();
-
-// Connect Database
-connectDB();
 
 // Middleware
 app.use(helmet());
@@ -40,10 +42,20 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Start server — connect to DB first, then listen
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`\n🚀 HireSense AI Server running on port ${PORT}`);
-  console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}\n`);
+
+async function start() {
+  await connectDB();
+  app.listen(PORT, () => {
+    console.log(`\n🚀 HireSense AI Server running on port ${PORT}`);
+    console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}\n`);
+  });
+}
+
+start().catch(err => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
 });
 
 module.exports = app;

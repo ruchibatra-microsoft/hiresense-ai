@@ -197,7 +197,7 @@ class QuestionScraper {
 
 // Run if called directly
 if (require.main === module) {
-  require('dotenv').config({ path: require('path').join(__dirname, '../../../.env.example') });
+  require('dotenv').config({ path: require('path').join(__dirname, '../../../.env') });
   new QuestionScraper().run();
 }
 
