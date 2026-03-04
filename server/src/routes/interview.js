@@ -58,16 +58,29 @@ router.post('/start', auth, async (req, res) => {
       return res.status(400).json({ error: `Invalid round type. Choose from: ${validRounds.join(', ')}` });
     }
 
-    // Check for active interview
+    // Check for active interview — auto-end stale ones
     const activeSession = await InterviewSession.findOne({
       user: req.userId,
       status: 'in-progress'
     });
     if (activeSession) {
-      return res.status(400).json({
-        error: 'You have an active interview. End it before starting a new one.',
-        activeSessionId: activeSession.sessionId
-      });
+      // If the active session is older than 2 hours, auto-end it
+      const ageMs = Date.now() - new Date(activeSession.createdAt).getTime();
+      const twoHours = 2 * 60 * 60 * 1000;
+      if (ageMs > twoHours) {
+        activeSession.status = 'abandoned';
+        activeSession.timing.endedAt = new Date();
+        await activeSession.save();
+      } else if (req.body.forceEnd) {
+        // Allow force-ending from frontend
+        try { await interviewEngine.endInterview(activeSession.sessionId); } catch {}
+      } else {
+        return res.status(400).json({
+          error: 'You have an active interview. End it before starting a new one.',
+          activeSessionId: activeSession.sessionId,
+          canForceEnd: true
+        });
+      }
     }
 
     const result = await interviewEngine.startInterview(

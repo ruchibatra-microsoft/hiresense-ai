@@ -17,7 +17,18 @@ export function InterviewProvider({ children }) {
     setStatus('starting');
     setIsLoading(true);
     try {
-      const { data } = await interviewAPI.startInterview({ company, roundType, difficulty });
+      let response;
+      try {
+        response = await interviewAPI.startInterview({ company, roundType, difficulty });
+      } catch (err) {
+        // If there's a stuck active session, force-end it and retry
+        if (err.response?.data?.canForceEnd) {
+          response = await interviewAPI.startInterview({ company, roundType, difficulty, forceEnd: true });
+        } else {
+          throw err;
+        }
+      }
+      const { data } = response;
       setSession(data);
       setMessages([{ role: 'interviewer', content: data.interviewerMessage, timestamp: new Date() }]);
       setTimeRemaining(data.duration);
