@@ -29,7 +29,7 @@ export function VoiceProvider({ children }) {
     };
     voiceService.onListenEnd = () => {
       setIsListening(false);
-      // Deliver accumulated transcript
+      // Deliver any remaining accumulated transcript
       if (accumulatedRef.current.trim() && onCompleteRef.current) {
         onCompleteRef.current(accumulatedRef.current.trim());
         accumulatedRef.current = '';
@@ -38,6 +38,10 @@ export function VoiceProvider({ children }) {
     };
     voiceService.onTranscript = (text) => setInterimTranscript(text);
     voiceService.onFinalTranscript = (text) => {
+      // Deliver each final chunk IMMEDIATELY to the input (not just on stop)
+      if (text.trim() && onCompleteRef.current) {
+        onCompleteRef.current(text.trim());
+      }
       accumulatedRef.current += ' ' + text;
       setInterimTranscript('');
     };

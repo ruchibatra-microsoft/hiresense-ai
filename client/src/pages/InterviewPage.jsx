@@ -83,7 +83,7 @@ export default function InterviewPage() {
   const [showVoiceSettings, setShowVoiceSettings] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
-  const { speak, isSpeaking, isListening, stopSpeaking, stopListening, interimTranscript, autoSpeak, setAutoSpeak, ttsSupported, sttSupported, speakManual } = useVoice();
+  const { speak, isSpeaking, isListening, stopSpeaking, stopListening, interimTranscript, autoSpeak, setAutoSpeak, ttsSupported, sttSupported, speakManual, error: voiceError } = useVoice();
   const lastSpokenIdx = useRef(-1);
 
   // Auto-speak new interviewer messages
@@ -129,6 +129,13 @@ export default function InterviewPage() {
       toast(timeWarning, { icon: '⏰', duration: 5000 });
     }
   }, [timeWarning]);
+
+  // Show voice errors as toasts
+  useEffect(() => {
+    if (voiceError) {
+      toast.error(voiceError, { duration: 5000 });
+    }
+  }, [voiceError]);
 
   // Navigate to results when completed
   useEffect(() => {
@@ -295,21 +302,27 @@ export default function InterviewPage() {
 
         <div className="chat-input-area">
           {isListening && <ListeningIndicator />}
+          {isListening && !interimTranscript && !input && (
+            <div style={{ fontSize: 12, color: 'var(--accent-danger)', marginBottom: 6, fontWeight: 600 }}>
+              🔴 Microphone is active — start speaking...
+            </div>
+          )}
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>
             💡 Think aloud — explain your reasoning as you go
-            {sttSupported && <span style={{ marginLeft: 8 }}>| 🎙️ Click mic to speak</span>}
+            <span style={{ marginLeft: 8 }}>| 🎙️ Click mic to speak</span>
           </div>
           <div className="chat-input-wrapper">
             <MicButton onTranscript={handleVoiceTranscript} />
             <textarea
               ref={inputRef}
               className="chat-input"
-              placeholder={isListening ? '🎙️ Listening... speak your answer' : isLoading ? 'Waiting for interviewer...' : 'Type your response... (Enter to send, Shift+Enter for new line)'}
-              value={isListening ? (input + (interimTranscript ? ' ' + interimTranscript : '')) : input}
+              placeholder={isListening ? '🎙️ Listening... speak now' : isLoading ? 'Waiting for interviewer...' : 'Type your response... (Enter to send, Shift+Enter for new line)'}
+              value={input + (isListening && interimTranscript ? ' ' + interimTranscript + '...' : '')}
               onChange={e => { if (!isListening) setInput(e.target.value); }}
               onKeyDown={handleKeyDown}
               disabled={isLoading || status !== 'in-progress'}
               rows={2}
+              style={isListening ? { borderColor: 'var(--accent-danger)', boxShadow: '0 0 0 2px rgba(248,113,113,0.2)' } : undefined}
             />
             <button
               className="btn btn-primary"
