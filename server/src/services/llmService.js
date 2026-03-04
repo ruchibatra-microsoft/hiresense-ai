@@ -162,34 +162,103 @@ class LLMService {
     const candidateMsgCount = conversationHistory.filter(m => m.role === 'candidate').length;
     const isStart = candidateMsgCount === 0 && (userMessage || '').includes('[SYSTEM:');
 
+    // Detect round type and company from the system prompt
+    const roundType = systemPrompt.includes('Data Structures & Algorithms') ? 'dsa'
+      : systemPrompt.includes('Low Level Design') ? 'lld'
+      : systemPrompt.includes('System Design') ? 'hld'
+      : systemPrompt.includes('Behavioral') ? 'behavioral' : 'dsa';
+
+    const companyMatch = systemPrompt.match(/INTERVIEW STYLE FOR (\w+)/i);
+    const company = companyMatch ? companyMatch[1].toLowerCase() : 'google';
+
+    // Extract question title from system prompt
+    const titleMatch = systemPrompt.match(/Title:\s*(.+)/);
+    const questionTitle = titleMatch ? titleMatch[1].trim() : '';
+    const descMatch = systemPrompt.match(/Description:\s*(.+)/);
+    const questionDesc = descMatch ? descMatch[1].trim().substring(0, 200) : '';
+
+    // Extract interviewer name
+    const nameMatch = systemPrompt.match(/You are (\w+),/);
+    const interviewerName = nameMatch ? nameMatch[1] : 'the interviewer';
+
     const mockResponses = {
-      start: [
-        `Hi there! I'll be your interviewer today. Thanks for joining — let me set some expectations for this round.\n\nWe have about 45 minutes together. I'll present a problem, and I'd like you to think through it out loud. Don't worry about getting to the perfect solution right away — I'm interested in how you approach the problem.\n\nFeel free to ask me any clarifying questions before you start coding. Ready?\n\nHere's the problem:\n\n**Given an array of integers and a target sum, find all unique pairs of numbers that add up to the target.** Handle duplicate numbers in the array, and each pair should be listed only once.\n\nWhat are your initial thoughts?`,
-        `Welcome! I'm going to walk you through a design problem today.\n\nLet me give you the scenario: **Design a parking lot management system.** This system should handle multiple floors, different vehicle types (motorcycles, cars, buses), track available spots, and support automated ticketing.\n\nBefore we start — what clarifying questions do you have about the requirements?`,
-      ],
-      followUp: [
-        `Interesting approach. Can you walk me through the time complexity of that solution? And what happens if the input array is empty?`,
-        `I see where you're going with that. Before you code it up — have you considered edge cases? What if there are duplicate values?`,
-        `That's a reasonable start, but can we do better? What's the bottleneck in your current approach?`,
-        `Good. Now, what are the trade-offs of this approach compared to alternatives? Is there a way to optimize space usage?`,
-        `Let me push back a bit — what happens at scale? If we have millions of entries, does your approach still hold up?`,
-        `Okay, I'd like you to actually implement this now. Write clean, production-quality code. Think about error handling as well.`,
-        `I notice you haven't considered thread safety. What if multiple threads access this concurrently?`,
-        `Walk me through your code with this example: input = [2, 7, 11, 15], target = 9. Trace through it step by step.`,
-      ],
-      codeReview: [
-        `I see your code. A few observations:\n\n1. The overall approach looks reasonable\n2. I notice you're not handling the case where the input could be null or empty — that's an edge case to consider\n3. Can you explain the time and space complexity?\n4. What would happen with very large inputs?\n\nLet's discuss your complexity analysis.`,
-        `Thanks for the submission. The logic looks mostly correct, but let's test it:\n\n- What does it return for an empty array?\n- What about duplicate elements?\n- Have you thought about negative numbers?\n\nAlso, I'd like to see this refactored for readability. Some of your variable names could be more descriptive.`,
-      ],
+      dsa: {
+        start: [
+          `Hi, I'm ${interviewerName}. Thanks for joining — let me set expectations for this coding round.\n\nWe have about 45 minutes. I'll give you a problem, and I'd like you to think out loud as you work through it. Don't jump straight to coding — let's discuss your approach first.\n\nHere's the problem:\n\n**${questionTitle || 'Given an array of integers and a target sum, find all unique pairs that add up to the target.'}**\n\n${questionDesc || 'Handle duplicate numbers in the array. Each pair should appear only once.'}\n\nBefore you start — what clarifying questions do you have?`,
+          `Hello! I'm ${interviewerName}, and I'll be conducting your coding interview today.\n\nBefore we dive in, here's how this will work: I'll present a problem, and I want to hear you think through it step by step. Start with your initial thoughts, discuss tradeoffs, then we'll move to implementation.\n\n**Problem: ${questionTitle || 'Two Sum Variants'}**\n\n${questionDesc || 'Given an array of integers and a target, find all unique pairs of numbers that sum to the target. Handle duplicates and edge cases.'}\n\nWhat are your initial thoughts? What approach comes to mind first?`
+        ],
+        followUp: [
+          `Interesting approach. Can you walk me through the time complexity? And what happens if the input is empty or has only one element?`,
+          `Before you code it — have you considered edge cases? What about duplicate values? Negative numbers?`,
+          `That's a reasonable start, but can we do better? What's the bottleneck in your current approach?`,
+          `Good thinking. What are the trade-offs of this approach vs alternatives? Can we optimize space usage?`,
+          `What happens at scale — say millions of entries? Does your approach still hold up?`,
+          `Alright, let's see the code. Write it clean and production-quality. Think about error handling.`,
+          `Walk me through your code with this example: input = [2, 7, 11, 15, 2], target = 9. Trace through it step by step.`,
+          `I notice a potential issue with that line. What happens when the input contains all identical elements?`
+        ]
+      },
+      lld: {
+        start: [
+          `Hi, I'm ${interviewerName}. Today we're going to work through a low-level design problem.\n\n**${questionTitle || 'Design a Parking Lot Management System'}**\n\n${questionDesc || 'This system should support multiple floors, different vehicle sizes (motorcycle, car, bus), automated ticketing, and payment processing.'}\n\nLet's start with requirements. What clarifying questions do you have? And then I'd like to hear about the core classes and objects you'd design.`,
+          `Hello! I'm ${interviewerName}. For today's round, we'll focus on object-oriented design.\n\nHere's the problem: **${questionTitle || 'Design a Parking Lot System'}**\n\n${questionDesc || 'Think about the key objects, their responsibilities, and how they interact.'}\n\nStart by identifying the core entities. What objects do you see in this problem?`
+        ],
+        followUp: [
+          `Interesting class structure. How does this follow the Single Responsibility Principle? Is any class doing too much?`,
+          `What design pattern could help here? Have you considered using Strategy or Factory?`,
+          `Good. Now — what if we need to add a new vehicle type, like electric vehicles with charging spots? How much of your design changes?`,
+          `How would you handle concurrent access? What if two users try to park in the same spot simultaneously?`,
+          `Can you write out the key interfaces and the core class implementations? Let's see the actual code.`,
+          `How would you unit test this? What are the key test cases?`,
+          `What about error handling — what if a user tries to exit without paying, or the system goes down mid-transaction?`
+        ]
+      },
+      hld: {
+        start: [
+          `Hi, I'm ${interviewerName}. We're going to work through a system design problem today.\n\n**${questionTitle || 'Design a URL Shortener'}**\n\n${questionDesc || 'Design the system end-to-end. Think about scale — this needs to handle millions of requests.'}\n\nYou have about 45–60 minutes. Where would you like to start? I'd recommend beginning with requirements.`,
+          `Hello! I'm ${interviewerName}. Today's round is system design.\n\nThe problem: **${questionTitle || 'Design a Distributed System'}**\n\n${questionDesc || 'Think at scale — millions of users, high availability, low latency.'}\n\nLet's start with the basics. What are the functional and non-functional requirements? Give me some back-of-envelope numbers.`
+        ],
+        followUp: [
+          `Good start on requirements. Can you estimate the QPS? How much storage do we need per day?`,
+          `You mentioned using a database — why that choice? What are the tradeoffs vs alternatives?`,
+          `Where would you add caching? What eviction policy? How do you handle cache invalidation?`,
+          `What happens when this service goes down? How do you handle failure gracefully?`,
+          `How does this scale to 10x the current load? Where's the bottleneck?`,
+          `Let's talk about the data model. What does the schema look like? How do you shard it?`,
+          `Is this system CP or AP under the CAP theorem? Why? What happens during a network partition?`,
+          `What's the weakest point of your design? If you had another week, what would you improve?`
+        ]
+      },
+      behavioral: {
+        start: [
+          `Hi, I'm ${interviewerName}. For this round, I'd like to learn about your experiences and how you approach real-world situations.\n\nI'll ask you a few questions — for each one, I'd like you to use the STAR format: **Situation, Task, Action, Result.** Be specific — give me data and details, not generalizations.\n\nLet's start: **${questionTitle || 'Tell me about a time you had to lead a project with ambiguous requirements.'}**\n\n${questionDesc || 'Walk me through the specific situation and what you did.'}`,
+          `Hello! I'm ${interviewerName}. This round focuses on your past experience and how you handle challenges.\n\nA few ground rules: I want **specific** stories, not hypotheticals. Use the STAR format — Situation, Task, Action, Result. And give me **numbers** — metrics, percentages, impact.\n\nHere's my first question: **${questionTitle || 'Tell me about your most impactful project.'}** What was the situation, and what was YOUR specific role?`
+        ],
+        followUp: [
+          `Good story. But what was YOUR specific contribution — not the team's? What did YOU do?`,
+          `You mentioned the outcome — can you quantify the impact? What were the metrics?`,
+          `What was the biggest challenge in that situation? How did you handle the pushback?`,
+          `What would you do differently if you faced that same situation today?`,
+          `Tell me about a time you failed. What happened, and what did you learn from it?`,
+          `Describe a time you disagreed with a teammate or manager on a technical decision. How did you handle it?`,
+          `How did you prioritize when you had multiple competing deadlines?`
+        ]
+      }
     };
+
+    const roundMocks = mockResponses[roundType] || mockResponses.dsa;
 
     let content;
     if (isStart) {
-      content = mockResponses.start[Math.floor(Math.random() * mockResponses.start.length)];
+      content = roundMocks.start[Math.floor(Math.random() * roundMocks.start.length)];
     } else if ((userMessage || '').includes('[The candidate has submitted their code]')) {
-      content = mockResponses.codeReview[Math.floor(Math.random() * mockResponses.codeReview.length)];
+      const codeReviews = [
+        `I see your code. A few observations:\n\n1. The overall logic looks reasonable\n2. I notice you're not handling the null/empty input case — that's an edge case to consider\n3. Can you explain the time and space complexity?\n4. What would happen with very large inputs?\n\nLet's discuss your complexity analysis.`,
+        `Thanks for the submission. The logic looks mostly correct, but let's test it:\n\n- What does it return for an empty input?\n- What about duplicate elements?\n- Have you thought about negative numbers?\n\nAlso, some variable names could be more descriptive. Walk me through the code line by line.`,
+      ];
+      content = codeReviews[Math.floor(Math.random() * codeReviews.length)];
     } else {
-      content = mockResponses.followUp[Math.floor(Math.random() * mockResponses.followUp.length)];
+      content = roundMocks.followUp[Math.floor(Math.random() * roundMocks.followUp.length)];
     }
 
     return { content, usage: { total_tokens: 0 }, finishReason: 'stop' };

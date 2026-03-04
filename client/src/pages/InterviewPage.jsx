@@ -5,9 +5,69 @@ import { COMPANIES, ROUNDS } from '../utils/constants';
 import Editor from '@monaco-editor/react';
 import ReactMarkdown from 'react-markdown';
 import toast from 'react-hot-toast';
-import { FiSend, FiCode, FiStopCircle, FiClock, FiAlertTriangle, FiMaximize2 } from 'react-icons/fi';
+import { FiSend, FiCode, FiStopCircle, FiClock, FiAlertTriangle, FiMaximize2, FiVolume2, FiVolumeX, FiMic } from 'react-icons/fi';
 import { useVoice } from '../context/VoiceContext';
 import { MicButton, SpeakingIndicator, ListeningIndicator, SpeakMessageButton, VoiceSettings } from '../components/Interview/VoiceComponents';
+
+/**
+ * Prominent voice controls in the interview header
+ */
+function VoiceHeaderControls({ isSpeaking, stopSpeaking, session, messages }) {
+  const { autoSpeak, setAutoSpeak, speakManual, ttsSupported } = useVoice();
+
+  if (!ttsSupported) return null;
+
+  const handleToggleSpeaker = () => {
+    if (isSpeaking) {
+      stopSpeaking();
+    } else {
+      setAutoSpeak(!autoSpeak);
+    }
+  };
+
+  const handleReplayLast = () => {
+    // Find last interviewer message and speak it
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'interviewer') {
+        speakManual(messages[i].content, session?.company);
+        break;
+      }
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      {/* Speaker ON/OFF toggle */}
+      <button
+        className={`btn btn-sm ${autoSpeak ? 'voice-toggle-on' : 'btn-secondary'}`}
+        onClick={handleToggleSpeaker}
+        title={isSpeaking ? 'Stop speaking' : autoSpeak ? 'Auto-speak ON (click to turn OFF)' : 'Auto-speak OFF (click to turn ON)'}
+      >
+        {isSpeaking ? <FiVolumeX size={15} /> : autoSpeak ? <FiVolume2 size={15} /> : <FiVolumeX size={15} />}
+        <span style={{ fontSize: 12 }}>{isSpeaking ? 'Stop' : autoSpeak ? 'Speaker ON' : 'Speaker OFF'}</span>
+      </button>
+
+      {/* Replay last message button */}
+      {!isSpeaking && (
+        <button
+          className="btn btn-secondary btn-sm"
+          onClick={handleReplayLast}
+          title="Replay last interviewer message"
+        >
+          🔊
+        </button>
+      )}
+
+      {/* Speaking indicator */}
+      {isSpeaking && (
+        <div className="voice-waveform" style={{ marginLeft: 4 }}>
+          <span className="voice-bar" /><span className="voice-bar" />
+          <span className="voice-bar" /><span className="voice-bar" />
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function InterviewPage() {
   const {
@@ -23,7 +83,7 @@ export default function InterviewPage() {
   const [showVoiceSettings, setShowVoiceSettings] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
-  const { speak, isSpeaking, isListening, stopSpeaking, stopListening, interimTranscript, autoSpeak, ttsSupported, sttSupported } = useVoice();
+  const { speak, isSpeaking, isListening, stopSpeaking, stopListening, interimTranscript, autoSpeak, setAutoSpeak, ttsSupported, sttSupported, speakManual } = useVoice();
   const lastSpokenIdx = useRef(-1);
 
   // Auto-speak new interviewer messages
@@ -156,11 +216,20 @@ export default function InterviewPage() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Prominent voice controls */}
+          <VoiceHeaderControls
+            isSpeaking={isSpeaking}
+            stopSpeaking={stopSpeaking}
+            session={session}
+            messages={messages}
+          />
+
+          {/* Voice settings dropdown */}
           {(ttsSupported || sttSupported) && (
             <div style={{ position: 'relative' }}>
               <button className="btn btn-secondary btn-sm" onClick={() => setShowVoiceSettings(!showVoiceSettings)} title="Voice Settings">
-                🎙️
+                ⚙️
               </button>
               {showVoiceSettings && (
                 <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 8, zIndex: 50, width: 280 }}>
