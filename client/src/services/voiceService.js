@@ -136,7 +136,9 @@ class VoiceService {
       utterance.onerror = (e) => {
         this.isSpeaking = false;
         this.currentUtterance = null;
-        if (e.error !== 'canceled') {
+        // These are normal — happen when speech is stopped/replaced, not real errors
+        const harmless = ['canceled', 'interrupted', 'aborted'];
+        if (!harmless.includes(e.error)) {
           this.onError?.('TTS error: ' + e.error);
         }
         resolve();
