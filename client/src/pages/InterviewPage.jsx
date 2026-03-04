@@ -146,11 +146,11 @@ export default function InterviewPage() {
 
   const handleSendMessage = useCallback(async () => {
     if (!input.trim() || isLoading) return;
-    // Stop listening/speaking when sending
+    // Stop listening/speaking FIRST, then grab the text
     stopSpeaking();
     stopListening();
     const msg = input.trim();
-    setInput('');
+    setInput(''); // Clear input immediately
     try {
       await sendMessage(msg);
     } catch {
@@ -159,11 +159,13 @@ export default function InterviewPage() {
     inputRef.current?.focus();
   }, [input, isLoading, sendMessage, stopSpeaking, stopListening]);
 
-  // Handle completed voice transcript
+  // Handle completed voice transcript — APPEND new words to input
   const handleVoiceTranscript = useCallback((transcript) => {
     if (transcript.trim()) {
-      setInput(prev => (prev ? prev + ' ' : '') + transcript);
-      inputRef.current?.focus();
+      setInput(prev => {
+        const trimmed = prev.trim();
+        return trimmed ? trimmed + ' ' + transcript : transcript;
+      });
     }
   }, []);
 

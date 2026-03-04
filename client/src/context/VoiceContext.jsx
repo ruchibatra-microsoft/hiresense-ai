@@ -13,9 +13,7 @@ export function VoiceProvider({ children }) {
   const [volume, setVolume] = useState(1.0);
   const [error, setError] = useState(null);
 
-  // Ref to accumulate final transcript chunks
-  const accumulatedRef = useRef('');
-  // Callback to deliver complete transcript to consumer
+  // Callback to deliver transcript chunks to consumer (e.g., InterviewPage input)
   const onCompleteRef = useRef(null);
 
   // Wire up voiceService callbacks
@@ -25,24 +23,19 @@ export function VoiceProvider({ children }) {
     voiceService.onListenStart = () => {
       setIsListening(true);
       setInterimTranscript('');
-      accumulatedRef.current = '';
     };
     voiceService.onListenEnd = () => {
       setIsListening(false);
-      // Deliver any remaining accumulated transcript
-      if (accumulatedRef.current.trim() && onCompleteRef.current) {
-        onCompleteRef.current(accumulatedRef.current.trim());
-        accumulatedRef.current = '';
-      }
+      // Do NOT re-deliver here — onFinalTranscript already delivers in real-time
+      // Just clean up
       setInterimTranscript('');
     };
     voiceService.onTranscript = (text) => setInterimTranscript(text);
     voiceService.onFinalTranscript = (text) => {
-      // Deliver each final chunk IMMEDIATELY to the input (not just on stop)
+      // Deliver each final chunk IMMEDIATELY to the input
       if (text.trim() && onCompleteRef.current) {
         onCompleteRef.current(text.trim());
       }
-      accumulatedRef.current += ' ' + text;
       setInterimTranscript('');
     };
     voiceService.onError = (msg) => {
