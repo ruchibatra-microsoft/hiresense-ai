@@ -39,11 +39,18 @@ export function ListeningIndicator() {
  * Microphone toggle button for the chat input area
  */
 export function MicButton({ onTranscript }) {
-  const { isListening, toggleListening, sttSupported, sttEnabled, isSpeaking } = useVoice();
+  const { isListening, toggleListening, sttSupported, sttEnabled, isSpeaking, stopSpeaking } = useVoice();
 
-  if (!sttSupported) return null;
-
+  // Always show the button — show unsupported state if needed
   const handleClick = () => {
+    if (!sttSupported) {
+      alert('Speech-to-Text requires Chrome or Edge browser.\n\nPlease open this page in Chrome for microphone support.');
+      return;
+    }
+    // If interviewer is speaking, stop TTS first then start listening
+    if (isSpeaking) {
+      stopSpeaking();
+    }
     toggleListening(onTranscript);
   };
 
@@ -51,11 +58,17 @@ export function MicButton({ onTranscript }) {
     <button
       className={`btn voice-mic-btn ${isListening ? 'voice-mic-btn-active' : 'btn-secondary'}`}
       onClick={handleClick}
-      disabled={!sttEnabled || isSpeaking}
-      title={isListening ? 'Stop listening (click or press Escape)' : 'Speak your answer (click or hold Space)'}
+      disabled={!sttEnabled}
+      title={
+        !sttSupported ? 'Mic requires Chrome/Edge — click for details'
+        : isListening ? 'Stop listening'
+        : isSpeaking ? 'Click to interrupt interviewer and speak'
+        : 'Click to speak your answer'
+      }
       type="button"
     >
-      {isListening ? <FiMic size={18} /> : <FiMicOff size={18} />}
+      <FiMic size={18} />
+      {!isListening && <span style={{ fontSize: 12, marginLeft: 4 }}>{isSpeaking ? 'Interrupt' : 'Speak'}</span>}
     </button>
   );
 }

@@ -185,10 +185,21 @@ class VoiceService {
    * Start listening to the microphone
    */
   startListening() {
-    if (!this.sttSupported || !this.sttEnabled) return;
+    if (!this.sttEnabled) {
+      this.onError?.('Microphone is disabled. Enable it in Voice Settings.');
+      return;
+    }
+
+    if (!this.sttSupported) {
+      this.onError?.('Speech-to-Text is not supported in this browser. Please use Chrome or Edge.');
+      return;
+    }
 
     // Stop any current listening
     this.stopListening();
+
+    // Stop TTS if it's playing
+    this.stopSpeaking();
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     this.recognition = new SpeechRecognition();
@@ -225,8 +236,16 @@ class VoiceService {
     };
 
     this.recognition.onerror = (event) => {
-      if (event.error === 'no-speech' || event.error === 'aborted') return;
-      this.onError?.('Mic error: ' + event.error);
+      if (event.error === 'no-speech') {
+        this.onError?.('No speech detected. Click the mic and try speaking again.');
+      } else if (event.error === 'not-allowed') {
+        this.onError?.('Microphone access denied. Please allow microphone permission in your browser and try again.');
+      } else if (event.error === 'aborted') {
+        // Intentional stop, ignore
+        return;
+      } else {
+        this.onError?.('Microphone error: ' + event.error);
+      }
       this.isListening = false;
       this.onListenEnd?.();
     };

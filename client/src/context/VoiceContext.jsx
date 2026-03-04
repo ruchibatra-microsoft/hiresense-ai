@@ -80,12 +80,12 @@ export function VoiceProvider({ children }) {
    * @param {Function} onComplete — called with final transcript when listening stops
    */
   const startListening = useCallback((onComplete) => {
-    if (!sttEnabled) return;
     // Stop interviewer speech before listening
     voiceService.stopSpeaking();
+    setIsSpeaking(false);
     onCompleteRef.current = onComplete || null;
     voiceService.startListening();
-  }, [sttEnabled]);
+  }, []);
 
   const stopListening = useCallback(() => {
     voiceService.stopListening();
