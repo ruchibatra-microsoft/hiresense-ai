@@ -6,6 +6,8 @@ import Editor from '@monaco-editor/react';
 import ReactMarkdown from 'react-markdown';
 import toast from 'react-hot-toast';
 import { FiSend, FiCode, FiStopCircle, FiClock, FiAlertTriangle, FiMaximize2 } from 'react-icons/fi';
+import { useVoice } from '../context/VoiceContext';
+import { MicButton, SpeakingIndicator, ListeningIndicator, SpeakMessageButton, VoiceSettings } from '../components/Interview/VoiceComponents';
 
 export default function InterviewPage() {
   const {
@@ -18,8 +20,36 @@ export default function InterviewPage() {
   const [code, setCode] = useState('// Write your solution here\n\n');
   const [language, setLanguage] = useState('javascript');
   const [showEndConfirm, setShowEndConfirm] = useState(false);
+  const [showVoiceSettings, setShowVoiceSettings] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const { speak, isSpeaking, isListening, stopSpeaking, stopListening, interimTranscript, autoSpeak, ttsSupported, sttSupported } = useVoice();
+  const lastSpokenIdx = useRef(-1);
+
+  // Auto-speak new interviewer messages
+  useEffect(() => {
+    if (!session || !autoSpeak) return;
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg && lastMsg.role === 'interviewer' && messages.length - 1 > lastSpokenIdx.current) {
+      lastSpokenIdx.current = messages.length - 1;
+      speak(lastMsg.content, session.company);
+    }
+  }, [messages, session, speak, autoSpeak]);
+
+  // Stop voice when interview ends
+  useEffect(() => {
+    if (status === 'completed' || status === 'ending') {
+      stopSpeaking();
+      stopListening();
+    }
+  }, [status, stopSpeaking, stopListening]);
+
+  // Show interim transcript in input while listening
+  useEffect(() => {
+    if (isListening && interimTranscript) {
+      // Show live transcript as a preview (don't replace typed text)
+    }
+  }, [isListening, interimTranscript]);
 
   // Redirect if no active session
   useEffect(() => {
@@ -49,6 +79,9 @@ export default function InterviewPage() {
 
   const handleSendMessage = useCallback(async () => {
     if (!input.trim() || isLoading) return;
+    // Stop listening/speaking when sending
+    stopSpeaking();
+    stopListening();
     const msg = input.trim();
     setInput('');
     try {
@@ -57,7 +90,15 @@ export default function InterviewPage() {
       toast.error('Failed to send message');
     }
     inputRef.current?.focus();
-  }, [input, isLoading, sendMessage]);
+  }, [input, isLoading, sendMessage, stopSpeaking, stopListening]);
+
+  // Handle completed voice transcript
+  const handleVoiceTranscript = useCallback((transcript) => {
+    if (transcript.trim()) {
+      setInput(prev => (prev ? prev + ' ' : '') + transcript);
+      inputRef.current?.focus();
+    }
+  }, []);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -116,6 +157,21 @@ export default function InterviewPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          {(ttsSupported || sttSupported) && (
+            <div style={{ position: 'relative' }}>
+              <button className="btn btn-secondary btn-sm" onClick={() => setShowVoiceSettings(!showVoiceSettings)} title="Voice Settings">
+                🎙️
+              </button>
+              {showVoiceSettings && (
+                <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 8, zIndex: 50, width: 280 }}>
+                  <div className="card" style={{ padding: 16 }}>
+                    <VoiceSettings />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className={getTimerClass()}>
             <FiClock size={16} />
             {formatTime(timeRemaining)}
@@ -143,6 +199,9 @@ export default function InterviewPage() {
               {msg.role !== 'system' && (
                 <div className="chat-message-meta">
                   {msg.role === 'interviewer' ? `🎤 ${session.interviewerName}` : '👤 You'}
+                  {msg.role === 'interviewer' && (
+                    <SpeakMessageButton text={msg.content} company={session.company} />
+                  )}
                   {msg.metadata?.isFollowUp && <span className="tag tag-dsa" style={{ fontSize: 10, padding: '1px 6px' }}>Follow-up</span>}
                   {msg.metadata?.isProbing && <span className="tag tag-behavioral" style={{ fontSize: 10, padding: '1px 6px' }}>Probing</span>}
                 </div>
@@ -157,20 +216,28 @@ export default function InterviewPage() {
               <div className="loading-dots"><span></span><span></span><span></span></div>
             </div>
           )}
+
+          {isSpeaking && (
+            <SpeakingIndicator name={session.interviewerName} />
+          )}
+
           <div ref={messagesEndRef} />
         </div>
 
         <div className="chat-input-area">
+          {isListening && <ListeningIndicator />}
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>
             💡 Think aloud — explain your reasoning as you go
+            {sttSupported && <span style={{ marginLeft: 8 }}>| 🎙️ Click mic to speak</span>}
           </div>
           <div className="chat-input-wrapper">
+            <MicButton onTranscript={handleVoiceTranscript} />
             <textarea
               ref={inputRef}
               className="chat-input"
-              placeholder={isLoading ? 'Waiting for interviewer...' : 'Type your response... (Enter to send, Shift+Enter for new line)'}
-              value={input}
-              onChange={e => setInput(e.target.value)}
+              placeholder={isListening ? '🎙️ Listening... speak your answer' : isLoading ? 'Waiting for interviewer...' : 'Type your response... (Enter to send, Shift+Enter for new line)'}
+              value={isListening ? (input + (interimTranscript ? ' ' + interimTranscript : '')) : input}
+              onChange={e => { if (!isListening) setInput(e.target.value); }}
               onKeyDown={handleKeyDown}
               disabled={isLoading || status !== 'in-progress'}
               rows={2}

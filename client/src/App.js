@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { InterviewProvider } from './context/InterviewContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { VoiceProvider } from './context/VoiceContext';
 import Navbar from './components/Layout/Navbar';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -58,9 +59,11 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <InterviewProvider>
-          <AppContent />
-        </InterviewProvider>
+        <VoiceProvider>
+          <InterviewProvider>
+            <AppContent />
+          </InterviewProvider>
+        </VoiceProvider>
       </AuthProvider>
     </ThemeProvider>
   );
